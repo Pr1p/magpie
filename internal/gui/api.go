@@ -1865,6 +1865,33 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		}
 		writeJSON(rw, settingsState())
 	})
+	// a ZCode account's auto-use of its reset cards: at both times, or
+	// with When ("week", "expiring" or "peak") at that one alone, the
+	// others kept — peak keeping none spent during UTC+8 2pm–6pm
+	mux.HandleFunc("POST /api/settings/zcode-auto-reset", func(rw http.ResponseWriter, r *http.Request) {
+		var in struct {
+			User string
+			On   bool
+			When string
+		}
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			fail(rw, err)
+			return
+		}
+		if strings.TrimSpace(in.User) == "" {
+			fail(rw, fmt.Errorf("which ZCode account?"))
+			return
+		}
+		set := func() error { return provider.SetZcodeAutoReset(in.User, in.On) }
+		if in.When != "" {
+			set = func() error { return provider.SetZcodeAutoResetCase(in.User, in.When, in.On) }
+		}
+		if err := set(); err != nil {
+			fail(rw, err)
+			return
+		}
+		writeJSON(rw, settingsState())
+	})
 	// whether a Codex account spends its credits once its allowance is
 	// used up, the Usage card's toggle, set on its own, and with Last
 	// whether only after everything else (left as it is when not sent)
