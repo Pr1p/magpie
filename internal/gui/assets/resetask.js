@@ -1,13 +1,14 @@
-// A Codex reset's or a ZCode reset card's confirmation (askReset in
-// app.js): spending one can't be taken back, so it asks first, names the
-// account and which of its resets is used, and lets the user pick another
-// (01huadalang on Discord). app.js imports this when a reset's Use is
-// pressed, so it weighs nothing on the core.
+// A Codex reset's, a ZCode reset card's or a GLM plan key's confirmation
+// (askReset in app.js): spending one can't be taken back, so it asks
+// first, names the account and which of its resets is used, and lets the
+// user pick another (01huadalang on Discord). app.js imports this when a
+// reset's Use is pressed, so it weighs nothing on the core.
 window.askResetSheet = function (q) {
-  const zcode = q.provider === "zcode";
+  const fam = autoResetFamily(q) === "zhipu" ? "zhipu" : q.provider === "zcode" ? "zcode" : "codex";
+  const zcode = fam === "zcode";
   const ed = el("div", "editor reset-ask");
   const head = el("div", "ehead");
-  head.append(icon(q.icon || (zcode ? "zcode" : "codex")), el("b", "", t(zcode ? "Use a ZCode reset card?" : "Use a Codex reset?")));
+  head.append(icon(q.icon || fam), el("b", "", t(zcode ? "Use a ZCode reset card?" : fam === "zhipu" ? "Use a reset" : "Use a Codex reset?")));
   ed.append(head);
   const who = q.alias || q.user || q.name;
   ed.append(el("p", "lib-confirm", t(q.resets.count === 1
@@ -15,9 +16,10 @@ window.askResetSheet = function (q) {
     : "{who} has {n} resets. Using one starts its windows again at once, as if none of them had been used. It can't be undone.", { who, n: q.resets.count })));
   // which of them is used: the one that runs out first unless the user
   // picks another of those listed one by one (01huadalang on Discord),
-  // and the dialog names the one it spends. A ZCode card carries no id
-  // to name it by, so the one that runs out first is the one spent.
-  const cards = !zcode && q.resets.each?.length > 1 && q.resets.each.every((c) => c.id) ? q.resets.each : null;
+  // and the dialog names the one it spends. A ZCode card or a GLM plan
+  // key's carries no id to pick it by, so the one that runs out first is
+  // the one spent.
+  const cards = fam === "codex" && q.resets.each?.length > 1 && q.resets.each.every((c) => c.id) ? q.resets.each : null;
   let chosen = 0;
   const which = el("p", "lib-confirm reset-which");
   const sooner = el("p", "lib-confirm reset-sooner");
@@ -74,15 +76,15 @@ window.askResetSheet = function (q) {
     go.disabled = true;
     go.classList.add("busy");
     try {
-      const out = await api("usage/" + (zcode ? "zcode" : "codex") + "-reset", chosen ? { user: q.user || "", credit: cards[chosen].id } : { user: q.user || "" });
+      const out = await api("usage/" + fam + "-reset", chosen ? { user: q.user || "", credit: cards[chosen].id } : { user: fam === "zhipu" ? autoResetID(q) : q.user || "" });
       // the providers' editor and Settings read the account's windows
       // and resets on their own, kept a minute: read again, as Usage is
       // (#1491); asked from the editor, closing goes back to it
-      delete loginUsage[zcode ? "zcode" : "codex"];
+      if (fam !== "zhipu") delete loginUsage[fam];
       closeConfirmAsk();
       status(who + ": " + resetOutcome(out), out.code === "reset" ? "ok" : "err");
       if (editing && view === "providers") renderProviders();
-      if (!zcode && window.autoResetOwnPaint && $("#codexAutoResetRow")) autoResetOwnPaint(prefs);
+      if (!zcode && fam !== "zhipu" && window.autoResetOwnPaint && $("#codexAutoResetRow")) autoResetOwnPaint(prefs);
       loadQuotas();
     } catch (err) {
       go.disabled = false;

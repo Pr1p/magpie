@@ -316,6 +316,10 @@ func Merge(body []byte, cur settings.Settings, web bool) (settings.Settings, err
 	in.ZcodeAutoReset = cur.ZcodeAutoReset
 	in.ZcodeAutoResetOnly = cur.ZcodeAutoResetOnly
 	in.ZcodeAutoResetOffPeak = cur.ZcodeAutoResetOffPeak
+	// and a GLM plan behind a provider key its cards, by the key's identity
+	in.ZhipuAutoReset = cur.ZhipuAutoReset
+	in.ZhipuAutoResetOnly = cur.ZhipuAutoResetOnly
+	in.ZhipuAutoResetOffPeak = cur.ZhipuAutoResetOffPeak
 	// and which of them spend their credits, set there too
 	in.CodexNoCredits = cur.CodexNoCredits
 	in.CodexCreditsLast = cur.CodexCreditsLast   // and which only after everything else
