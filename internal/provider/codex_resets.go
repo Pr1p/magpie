@@ -290,7 +290,7 @@ func spendCodexReset(ctx context.Context, user, credit, why string) (ResetOutcom
 	StaleAllowance("codex", user)
 	if out.Code == "reset" {
 		renewedNow("codex", user)
-		noteResetUsed(user, why, out)
+		noteResetUsed("codex", user, why, out)
 	}
 	subscriptionUsageCache.Lock()
 	subscriptionUsageCache.at = time.Time{}
