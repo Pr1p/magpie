@@ -1338,7 +1338,9 @@ function routingPage(part) {
     // a Codex reset spent by itself: with Codex's own sign-in the one try
     // it was spent for is the one that then answered
     const spent = tr.reset && tr.status < 400
-      ? t("Its week was used up, so one of {account}'s Codex resets was used by itself first.", { account: userShown(w?.provider, tr.reset.who) }) + " "
+      ? t(tr.reset.agent === "zcode"
+        ? "Its window was used up, so one of {account}'s ZCode reset cards was used by itself first."
+        : "Its week was used up, so one of {account}'s Codex resets was used by itself first.", { account: userShown(w?.provider, tr.reset.who) }) + " "
       // Codex's own sign-in asked again onto its credits: the one try
       : tr.credits && tr.status < 400
       ? t("Its allowance had just run out and it was refused, so it was asked again at once to spend its credits.") + " "
@@ -1355,7 +1357,9 @@ function routingPage(part) {
         : t("{who} answered in {ms}{tk}.", { who: name, ms: took(tr.ms), tk }));
     }
     if (tr.reset)
-      return t("{who} answered {status}: its week is used up and nobody else could take the request, so one of {account}'s Codex resets was used by itself and the request is asked again, before any of the reply reaches {agent}.",
+      return t(tr.reset.agent === "zcode"
+        ? "{who} answered {status}: its window is used up and nobody else could take the request, so one of {account}'s ZCode reset cards was used by itself and the request is asked again, before any of the reply reaches {agent}."
+        : "{who} answered {status}: its week is used up and nobody else could take the request, so one of {account}'s Codex resets was used by itself and the request is asked again, before any of the reply reaches {agent}.",
         { who: name, status: tr.status, account: userShown(w?.provider, tr.reset.who), agent });
     // a Codex account that holds credits, refused as its allowance ran
     // out: asked again at once, for the vendor to spend its credits
