@@ -26,6 +26,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -105,15 +106,6 @@ func ZcodeAutoResetWhen(user string) (week, expiring, peak bool) {
 	}
 	peak = containsFold(s.ZcodeAutoResetOffPeak, user)
 	return week, expiring, peak
-}
-
-func containsFold(ss []string, v string) bool {
-	for _, s := range ss {
-		if strings.EqualFold(s, v) {
-			return true
-		}
-	}
-	return false
 }
 
 // ZcodeAutoReset says whether the ZCode account user spends a reset card
@@ -220,22 +212,52 @@ func zcodeLoginUser(user string) (zcodeLoginKey, bool) {
 func zcodeResetsOf(ctx context.Context, k zcodeKey) ([]QuotaWindow, *ResetCredits, error) {
 	if k.team() {
 		root := zcodeBizRoot(k.Base)
-		key, err := zcodeTeamKeyOf(ctx, k)
-		if err != nil {
+		if k.Key == "" {
 			return nil, zhipuTeamResets(ctx, root, k.Token, k.Base, k.Org, k.Project), nil
 		}
-		ws, err := zhipuTeamWindows(ctx, root, key, k.Base, k.Org, k.Project)
+		ws, err := zhipuTeamWindows(ctx, root, k.Key, k.Base, k.Org, k.Project)
 		if err != nil {
-			return nil, nil, err
+			return nil, zhipuTeamResets(ctx, root, k.Token, k.Base, k.Org, k.Project), nil
 		}
 		return ws, zhipuTeamResets(ctx, root, k.Token, k.Base, k.Org, k.Project), nil
 	}
 	root := zcodeRoot(k.Base)
-	var data zhipuLimits
-	if err := zcodeGet(ctx, root+"/api/monitor/usage/quota/limit", k.Key, &data); err != nil {
+	ws, err := zhipuPlanWindows(ctx, root+"/api/monitor/usage/quota/limit", k.Key, nil)
+	if err != nil {
 		return nil, nil, err
 	}
-	return data.windows(), zhipuPersonalResets(ctx, root, k.Key), nil
+	return ws, zhipuPersonalResets(ctx, root, k.Key), nil
+}
+
+// zhipuPlanWindows reads /api/monitor/usage/quota/limit as the plan card
+// does (readZhipuPlan), under a person's key or a team's with its headers.
+func zhipuPlanWindows(ctx context.Context, u, auth string, hdr map[string]string) ([]QuotaWindow, error) {
+	var data json.RawMessage
+	if err := zcodeCallH(ctx, http.MethodGet, u, auth, hdr, nil, &data); err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, nil
+	}
+	_, ws, err := readZhipuPlan([]byte(`{"success":true,"data":` + string(data) + `}`))
+	return ws, err
+}
+
+// zhipuTeamWindows is a team seat's windows: the team plan's five hours
+// and week, asked with the team project's key and its headers.
+func zhipuTeamWindows(ctx context.Context, root, key, base, org, project string) ([]QuotaWindow, error) {
+	return zhipuPlanWindows(ctx, root+"/api/monitor/usage/quota/limit?type=2", key, zcodeTeamHeaders(base, org, project))
+}
+
+// zhipuTeamResets is how many resets a team member may spend, of the five
+// hours and of the week: those of customer-package-reset/list still
+// available. nil when it can't be told or there are none.
+func zhipuTeamResets(ctx context.Context, root, auth, base, org, project string) *ResetCredits {
+	r := zhipuResets(ctx, root+"/api/biz/customer-package-reset/list?targetType=TEAM", auth, zcodeTeamHeaders(base, org, project))
+	if r != nil {
+		r.Team = true
+	}
+	return r
 }
 
 // zhipuResetsOf lists the account's reset cards alone.

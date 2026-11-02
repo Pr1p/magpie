@@ -50,15 +50,15 @@ func TestResetLeadFollowsSetting(t *testing.T) {
 	// and the check spends it then, not before
 	e := expiringResets{next: map[string]time.Time{}}
 	used := []QuotaWindow{{Span: 7 * 24 * time.Hour, Used: 40}}
-	if out, _ := e.check("me@example.com", want.Add(-time.Minute), func() ([]QuotaWindow, *ResetCredits, error) {
+	if out, _ := e.check("codex", "me@example.com", want.Add(-time.Minute), func() ([]QuotaWindow, *ResetCredits, error) {
 		return used, &ResetCredits{Count: 1, Until: &until}, nil
-	}, func() (ResetOutcome, error) { return ResetOutcome{Code: "reset"}, nil }); out.Code != "" {
+	}, func() (ResetOutcome, error) { return ResetOutcome{Code: "reset"}, nil }, false); out.Code != "" {
 		t.Fatalf("spent a minute before the lead: %+v", out)
 	}
 	e.next = map[string]time.Time{}
-	if out, _ := e.check("me@example.com", want, func() ([]QuotaWindow, *ResetCredits, error) {
+	if out, _ := e.check("codex", "me@example.com", want, func() ([]QuotaWindow, *ResetCredits, error) {
 		return used, &ResetCredits{Count: 1, Until: &until}, nil
-	}, func() (ResetOutcome, error) { return ResetOutcome{Code: "reset"}, nil }); out.Code != "reset" {
+	}, func() (ResetOutcome, error) { return ResetOutcome{Code: "reset"}, nil }, false); out.Code != "reset" {
 		t.Fatalf("not spent at the lead: %+v", out)
 	}
 }
@@ -79,7 +79,7 @@ func TestResetLeadLooksInsideLongLead(t *testing.T) {
 	var looks []time.Time
 	tries := 0
 	for now := start; now.Before(until); now = now.Add(resetExpiryClose) {
-		e.check("me@example.com", now, func() ([]QuotaWindow, *ResetCredits, error) {
+		e.check("codex", "me@example.com", now, func() ([]QuotaWindow, *ResetCredits, error) {
 			looks = append(looks, now)
 			if !spent.IsZero() {
 				return used, nil, nil
@@ -92,7 +92,7 @@ func TestResetLeadLooksInsideLongLead(t *testing.T) {
 			}
 			spent = now
 			return ResetOutcome{Code: "reset"}, nil
-		})
+		}, false)
 	}
 	if want := due.Add(resetExpiryClose); !spent.Equal(want) {
 		t.Fatalf("spent %v before it runs out, want %v (looked at %v)", until.Sub(spent), until.Sub(want), looks)

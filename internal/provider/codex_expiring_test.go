@@ -403,13 +403,13 @@ func TestExpiringResetSpentPastAFailedRead(t *testing.T) {
 	}
 	due := func() { // the next look's time has come
 		expiring.Lock()
-		expiring.next["me@example.com"] = time.Time{}
+		expiring.next[resetsLedgerKey("codex", "me@example.com")] = time.Time{}
 		expiring.Unlock()
 	}
 	wait := func() time.Duration {
 		expiring.Lock()
 		defer expiring.Unlock()
-		return time.Until(expiring.next["me@example.com"])
+		return time.Until(expiring.next[resetsLedgerKey("codex", "me@example.com")])
 	}
 
 	// the card is seen, 20 minutes left, nothing used yet: kept, looked at again soon

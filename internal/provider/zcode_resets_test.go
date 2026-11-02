@@ -221,7 +221,7 @@ func TestZhipuSpentAtOutOfPeak(t *testing.T) {
 		t.Fatalf("the peak's workdays: sat %v sun %v mon %v", inZhipuPeak(sat), inZhipuPeak(sun), inZhipuPeak(mon))
 	}
 	dueSat := time.Date(2026, 10, 17, 16, 30, 0, 0, cst)
-	if got := zhipuSpentAt(dueSat, time.Date(2026, 10, 17, 12, 0, 0, 0, cst), false, time.Time{}); !got.Equal(dueSat.Add(-resetExpiryLead)) {
+	if got := zhipuSpentAt(dueSat, time.Date(2026, 10, 17, 12, 0, 0, 0, cst), false, time.Time{}); !got.Equal(dueSat.Add(-resetLead())) {
 		t.Fatalf("a spend due on a Saturday, in the peak's hours, not pulled: %v", got)
 	}
 }
